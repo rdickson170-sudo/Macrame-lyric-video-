@@ -1,0 +1,1394 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#04090a">
+<meta name="description" content="Make lyric videos from your own songs with templates, fonts, karaoke, artwork and effects. Designed by MACRAME.">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Lyric Video Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&family=Orbitron:wght@700&family=Bebas+Neue&family=Oswald:wght@700&family=Montserrat:wght@700&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Pacifico&family=Lobster&family=Permanent+Marker&family=Righteous&family=Anton&family=Cinzel:wght@700&family=Dancing+Script:wght@700&family=Bangers&family=Press+Start+2P&family=Satisfy&family=Abril+Fatface&family=Russo+One&family=Caveat:wght@700&display=swap">
+<style>
+/* Layout: sticky preview stage beside a five-step control panel (Song, Style, Lyrics, Sync, Record); Style is grouped into collapsible sections. UI accent follows the chosen video accent. */
+:root {
+  --bg: #04090a;
+  --panel: #091513;
+  --panel-2: #0d1d1a;
+  --line: #173a31;
+  --fg: #c9ffe9;
+  --dim: #6f9c8d;
+  --accent: #19ff8c;
+  --on-accent: #02130b;
+  --hot: #ff3b6b;
+  --cyan: #38e8ff;
+  --f-ui: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Share Tech Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-ui);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-block: 18px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1280px; margin: 0 auto; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 16px; }
+h1 { font-size: 26px; letter-spacing: .04em; margin: 0; text-transform: uppercase; color: var(--accent); text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+.sig { font-family: var(--f-mono); color: var(--dim); font-size: 13px; }
+.sig b { color: var(--accent); font-weight: 400; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 901px) { .stage { position: sticky; top: 12px; } }
+.stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.screen { background: #000; border: 1px solid var(--line); padding: 8px; display: flex; justify-content: center; box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 12%, transparent); }
+canvas#cv { display: block; width: auto; height: auto; max-width: 100%; max-height: 70vh; background: #000; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+canvas#mini { display: block; width: auto; height: auto; max-width: 100%; max-height: 56vh; background: #000; }
+.transport input[type=range] { flex: 1 1 160px; min-width: 0; }
+.time { font-family: var(--f-mono); color: var(--dim); font-size: 13px; min-width: 112px; text-align: right; }
+.panel { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.step { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.step h2 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-family: var(--f-mono); font-weight: 400; display: flex; gap: 8px; align-items: center; }
+.step h2::before { content: ">"; color: var(--hot); }
+details.grp { border-top: 1px solid var(--line); padding-top: 6px; }
+details.grp > summary { cursor: pointer; font: 12px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 6px 0; list-style: none; display: flex; justify-content: space-between; }
+details.grp > summary::after { content: "+"; color: var(--accent); }
+details.grp[open] > summary::after { content: "-"; }
+details.grp[open] > summary { color: var(--accent); }
+details.grp > .in { display: flex; flex-direction: column; gap: 10px; padding: 6px 0 4px; }
+.hint { margin: 0; color: var(--dim); font-size: 13px; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--dim); letter-spacing: .06em; text-transform: uppercase; font-family: var(--f-mono); min-width: 0; }
+.two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
+.four { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+.checks { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 12px; }
+@media (max-width: 420px) { .two, .checks { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 480px) { .four { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+input[type=text], input[type=number], select, textarea {
+  background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); padding: 8px 10px; font: inherit; font-size: 15px; width: 100%; min-width: 0; border-radius: 0;
+  text-transform: none; letter-spacing: 0;
+}
+input[type=color] { width: 100%; height: 40px; padding: 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 0; cursor: pointer; }
+input[type=range] { accent-color: var(--accent); width: 100%; }
+input[type=checkbox] { accent-color: var(--accent); width: 18px; height: 18px; flex: 0 0 auto; }
+label.chk { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+textarea { font-family: var(--f-mono); font-size: 14px; min-height: 150px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, .file:focus-within, summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+button, .file {
+  background: var(--panel-2); color: var(--fg); border: 1px solid var(--accent); padding: 9px 14px; font: inherit; font-weight: 600; letter-spacing: .05em; cursor: pointer; border-radius: 0; text-transform: uppercase; font-size: 13px;
+}
+button:hover, .file:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+button.primary { background: var(--accent); color: var(--on-accent); }
+button.primary:hover { filter: brightness(1.12); background: var(--accent); }
+button.hot { border-color: var(--hot); color: var(--hot); }
+button.hot:hover { background: rgba(255,59,107,.12); }
+button.small { padding: 6px 10px; font-size: 12px; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+.file { display: inline-block; text-align: center; position: relative; }
+.file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.drop { display: block; padding: 22px 12px; border-style: dashed; }
+.drop.over { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.tpls { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.tpl { padding: 0; border: 1px solid var(--line); height: 62px; display: flex; flex-direction: column; justify-content: flex-end; text-align: left; overflow: hidden; position: relative; }
+.tpl span { display: block; padding: 5px 8px; font: 700 11px var(--f-ui); letter-spacing: .05em; text-transform: uppercase; background: rgba(0,0,0,.5); color: #fff; }
+.tpl i { position: absolute; left: 8px; top: 8px; width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+.tpl[aria-pressed="true"] { border: 2px solid var(--accent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 50%, transparent); }
+#tap { flex: 1 1 200px; padding: 18px 14px; font-size: 16px; touch-action: manipulation; user-select: none; }
+.rows { position: relative; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); background: var(--panel-2); }
+.row { display: grid; grid-template-columns: 28px 78px minmax(0,1fr); gap: 8px; align-items: center; padding: 5px 8px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.row:last-child { border-bottom: 0; }
+.row .n { font-family: var(--f-mono); color: var(--dim); font-size: 12px; }
+.row input { padding: 3px 6px; font-family: var(--f-mono); font-size: 13px; }
+.row .tx { overflow-wrap: anywhere; font-size: 14px; }
+.row.un .tx { color: var(--dim); }
+.row.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.status { font-family: var(--f-mono); font-size: 13px; color: var(--cyan); min-height: 1.4em; overflow-wrap: anywhere; }
+.rec { color: var(--hot); }
+video#out { width: 100%; max-height: 360px; background: #000; border: 1px solid var(--line); }
+.note { font-size: 12px; color: var(--dim); margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; }
+.chip button:first-child { border-right: 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style></head><body>
+
+<div class="wrap">
+  <div class="top">
+    <h1>Lyric Video Studio</h1>
+    <span class="sig">&lt;/&gt; designed by <b>MACRAME</b></span>
+  </div>
+
+  <div class="grid">
+    <section class="stage" aria-label="Preview">
+      <div class="screen"><canvas id="cv" width="1280" height="720" aria-label="Lyric video preview"></canvas></div>
+      <div class="transport">
+        <button id="play" class="primary" type="button">Play</button>
+        <button id="restart" type="button">Restart</button>
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+        <span class="time" id="time">0:00.00 / 0:00.00</span>
+      </div>
+      <label class="chk"><input id="kSplit" type="checkbox"> Split preview: also show the <span id="altName">vertical</span> shape</label>
+      <div class="screen" id="miniBox" hidden><canvas id="mini" width="360" height="640" aria-label="Alternate shape preview"></canvas></div>
+      <p class="hint" id="modeNote">Demo mode: no song loaded yet, so the preview runs on a built-in clock with example lyrics.</p>
+    </section>
+
+    <section class="panel" aria-label="Controls">
+      <div class="step">
+        <h2>Song</h2>
+        <label class="file" id="fileLabel">Choose MP3 / audio file<input id="file" type="file" accept="audio/*"></label>
+        <div class="two">
+          <label class="f">Song title<input id="title" type="text" value="Your Song Title" maxlength="60"></label>
+          <label class="f">Artist<input id="artist" type="text" value="Artist Name" maxlength="60"></label>
+        </div>
+        <label class="f">Video shape
+          <select id="shape">
+            <option value="1280x720">Landscape 16:9 (YouTube)</option>
+            <option value="720x1280">Vertical 9:16 (Status, TikTok, Reels)</option>
+            <option value="1000x1000">Square 1:1</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="step">
+        <h2>Style</h2>
+        <p class="hint">Pick a template, then open the sections below to change anything. The preview updates live.</p>
+        <div class="tpls" id="tpls" role="group" aria-label="Templates"></div>
+        <div class="row-btns">
+          <button id="rand" type="button">Surprise me</button>
+          <button id="tplReset" type="button">Reset to template</button>
+        </div>
+
+        <details class="grp" open>
+          <summary>Colors</summary>
+          <div class="in">
+            <div class="four">
+              <label class="f">Back 1<input id="cBg1" type="color" value="#030706"></label>
+              <label class="f">Back 2<input id="cBg2" type="color" value="#06140f"></label>
+              <label class="f">Text<input id="cText" type="color" value="#e9fff5"></label>
+              <label class="f">Accent<input id="cAccent" type="color" value="#19ff8c"></label>
+            </div>
+            <label class="chk"><input id="kGrad" type="checkbox"> Gradient text (text color to accent)</label>
+          </div>
+        </details>
+
+        <details class="grp">
+          <summary>Text</summary>
+          <div class="in">
+            <div class="two">
+              <label class="f">Font<select id="sFont"></select></label>
+              <label class="f">Text effect<select id="sFx"></select></label>
+              <label class="f">Line animation<select id="sAnim"></select></label>
+              <label class="f">Position<select id="sPos"></select></label>
+              <label class="f">Karaoke fill<select id="sKMode"></select></label>
+              <label class="f">Lyric panel<select id="sPanel"></select></label>
+            </div>
+            <label class="f">Text size <span id="sizeVal">100%</span><input id="sSize" type="range" min="60" max="140" value="100"></label>
+            <label class="chk"><input id="kUpper" type="checkbox"> UPPERCASE lyrics</label>
+            <label class="f">Letter spacing <span id="trackVal">0</span><input id="sTrack" type="range" min="0" max="30" value="0"></label>
+            <label class="chk"><input id="kHead" type="checkbox"> Show title and artist in the corner</label>
+          </div>
+        </details>
+
+        <details class="grp" open>
+          <summary>Artwork</summary>
+          <div class="in">
+            <label class="file drop" id="artDrop">Drop your cover art here, or tap to choose<input id="artFile" type="file" accept="image/*"></label>
+            <div class="two">
+              <label class="f">Shape<select id="aShape"></select></label>
+              <label class="f">Where<select id="aLayout"></select></label>
+            </div>
+            <label class="f">Size <span id="aSizeVal">100%</span><input id="aSize" type="range" min="50" max="150" value="100"></label>
+            <div class="checks">
+              <label class="chk"><input id="aSpin" type="checkbox"> Spin like a record</label>
+              <label class="chk"><input id="aBeat" type="checkbox"> Pulse to the beat</label>
+            </div>
+            <div class="row-btns"><button id="artClear" type="button">Remove artwork</button></div>
+            <p class="note">Your images stay on your device. Use art you own or have permission to use.</p>
+          </div>
+        </details>
+
+        <details class="grp">
+          <summary>Background and visualizer</summary>
+          <div class="in">
+            <div class="two">
+              <label class="f">Background animation<select id="sBg"></select></label>
+              <label class="f">Music visualizer<select id="sVis"></select></label>
+            </div>
+            <label class="f">Photo dimming <span id="dimVal">45%</span><input id="imgDim" type="range" min="0" max="90" value="45"></label>
+            <div class="row-btns">
+              <label class="file" id="imgLabel">Add background photo<input id="imgFile" type="file" accept="image/*"></label>
+              <button id="imgClear" type="button">Remove photo</button>
+            </div>
+            <div class="row-btns">
+              <label class="file" id="slidesLabel">Photo slideshow (pick several)<input id="slidesFile" type="file" accept="image/*" multiple></label>
+              <button id="slidesClear" type="button">Clear slideshow</button>
+            </div>
+            <label class="f">Slide time <span id="slideVal">6s</span><input id="slideSec" type="range" min="3" max="15" value="6"></label>
+            <label class="chk"><input id="kBzoom" type="checkbox"> Photos zoom to the beat</label>
+          </div>
+        </details>
+
+        <details class="grp">
+          <summary>Film effects</summary>
+          <div class="in">
+            <div class="checks">
+              <label class="chk"><input id="kScan" type="checkbox"> Scanlines</label>
+              <label class="chk"><input id="kGrain" type="checkbox"> Film grain</label>
+              <label class="chk"><input id="kCine" type="checkbox"> Cinema bars</label>
+              <label class="chk"><input id="kFlash" type="checkbox"> Beat flash</label>
+            </div>
+          </div>
+        </details>
+
+        <details class="grp">
+          <summary>Emoji animation</summary>
+          <div class="in">
+            <label class="chk"><input id="eOn" type="checkbox"> Show animated emojis</label>
+            <div class="two">
+              <label class="f">Emojis (type or paste any)<input id="eSet" type="text" value="🔥🎵✨" maxlength="40"></label>
+              <label class="f">Motion<select id="eMode"></select></label>
+            </div>
+            <label class="f">Amount <span id="eAmtVal">4</span><input id="eAmt" type="range" min="1" max="10" value="4"></label>
+          </div>
+        </details>
+
+        <details class="grp">
+          <summary>Branding, intro and outro</summary>
+          <div class="in">
+            <label class="f">Credit line on the intro card<input id="oCredit" type="text" placeholder="Produced by ..." maxlength="60"></label>
+            <label class="chk"><input id="oOn" type="checkbox"> Show an outro card at the end</label>
+            <label class="f">Outro text<input id="oText" type="text" value="Thanks for watching" maxlength="60"></label>
+            <div class="row-btns">
+              <label class="file" id="logoLabel">Add your logo<input id="logoFile" type="file" accept="image/*"></label>
+              <button id="logoClear" type="button">Remove logo</button>
+            </div>
+            <p class="note">The "designed by MACRAME" mark always stays in the corner.</p>
+          </div>
+        </details>
+
+        <details class="grp">
+          <summary>My saved styles</summary>
+          <div class="in">
+            <div class="row-btns">
+              <label class="f" style="flex:1 1 140px">Name<input id="pName" type="text" placeholder="My style" maxlength="30"></label>
+              <button id="pSave" type="button">Save current style</button>
+            </div>
+            <div class="chips" id="pList"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="step">
+        <h2>Lyrics</h2>
+        <p class="hint">One line per screen. Use your own words or lyrics you have permission to use. The example below is original text for the demo; replace it. You can also paste lines that start with a time like [00:12.50].</p>
+        <textarea id="lyrics" spellcheck="false" aria-label="Lyrics, one line per row"></textarea>
+        <p class="note" id="gOff">Auto-writing lyrics works in the Claude-hosted version of this page.</p>
+        <div id="gen" hidden style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px">
+          <h2 style="margin:0">Auto-write lyrics</h2>
+          <div class="two">
+            <label class="f">Language
+              <select id="gLang"><option>Chichewa</option><option>English</option><option>Chichewa and English mix</option></select>
+            </label>
+            <label class="f">Style
+              <select id="gStyle"><option>Hip-hop</option><option>Afro-pop</option><option>Gospel</option><option>Love song</option><option>Reggae</option></select>
+            </label>
+          </div>
+          <label class="f">Theme or idea<input id="gTheme" type="text" value="Pride in Malawi" maxlength="120"></label>
+          <label class="f">Number of lines
+            <select id="gLines"><option>8</option><option selected>12</option><option>16</option><option>24</option></select>
+          </label>
+          <div class="row-btns">
+            <button id="gGo" class="primary" type="button">Write lyrics</button>
+            <button id="gStop" class="hot" type="button" hidden>Stop</button>
+          </div>
+          <p class="note" id="gNote">Writes brand-new original lines into the box above. Edit them freely, then sync.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <h2>Sync</h2>
+        <p class="hint">Press play, then tap (or press Space / M) at the start of each line. Edit any time by hand.</p>
+        <div class="row-btns">
+          <button id="tap" class="primary" type="button">Tap: start this line</button>
+        </div>
+        <div class="row-btns">
+          <label class="f" style="width:130px">Reaction offset (s)<input id="react" type="number" step="0.05" min="0" max="1" value="0.15"></label>
+          <button id="undo" type="button">Undo</button>
+          <button id="spread" type="button">Spread evenly</button>
+          <button id="clear" class="hot" type="button">Clear times</button>
+        </div>
+        <div class="row-btns">
+          <span class="note">Nudge all times:</span>
+          <button id="shiftM" class="small" type="button">-0.1s</button>
+          <button id="shiftP" class="small" type="button">+0.1s</button>
+        </div>
+        <div class="row-btns">
+          <button id="wordSync" type="button">Word-sync selected line</button>
+        </div>
+        <p class="note" id="wordNote">Optional, for karaoke: select a line, press Word-sync, then tap once as each word starts. Then set Karaoke fill to "tapped timing" in Style, Text.</p>
+        <div class="rows" id="rows" role="list"></div>
+      </div>
+
+      <div class="step">
+        <h2>Record</h2>
+        <p class="hint">Records the preview and the song from the start to the end into one video file.</p>
+        <div class="two">
+          <label class="f">Quality<select id="rBit"><option value="5">Standard (5 Mbps)</option><option value="10">High (10 Mbps)</option><option value="2.5">Small file (2.5 Mbps)</option></select></label>
+          <label class="f">Smoothness<select id="rFps"><option value="30">30 fps</option><option value="60">60 fps</option></select></label>
+        </div>
+        <div class="row-btns">
+          <button id="rec" class="primary" type="button">Record video</button>
+          <button id="stoprec" class="hot" type="button" disabled>Stop</button>
+          <button id="thumb" type="button">Save thumbnail (PNG)</button>
+        </div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <div id="outBox" hidden>
+          <video id="out" controls playsinline></video>
+          <div class="row-btns"><button id="dl" class="primary" type="button">Save video</button></div>
+          <p class="note" id="dlnote">Opens a save prompt. If it is unavailable, long-press or right-click the video and choose Save, or open the standalone file in Chrome.</p>
+        </div>
+        <label class="f">Timed lyrics (.lrc text)
+          <textarea id="lrc" readonly style="min-height:90px"></textarea>
+        </label>
+        <button id="copylrc" type="button">Copy timed lyrics</button>
+      </div>
+    </section>
+  </div>
+  <audio id="audio" preload="auto"></audio>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var mainCv = $('cv'), miniCv = $('mini');
+  var cv = mainCv, ctx = cv.getContext('2d');
+  var W = 1280, H = 720;
+  var rain = document.createElement('canvas'), rctx = rain.getContext('2d');
+  function mkView(c) { return { cv: c, ctx: c.getContext('2d'), W: 0, H: 0, rain: document.createElement('canvas'), drops: [], parts: [], stars: [], emo: [], lastAi: -2, emoAcc: 0 }; }
+  var V1 = mkView(mainCv), V2 = mkView(miniCv), splitOn = false;
+  function useView(v) { cv = v.cv; ctx = v.ctx; W = v.W; H = v.H; rain = v.rain; rctx = v.rain.getContext('2d'); drops = v.drops; parts = v.parts; stars = v.stars; emo = v.emo; lastAi = v.lastAi; emoAcc = v.emoAcc; }
+  function leaveView(v) { v.lastAi = lastAi; v.emoAcc = emoAcc; v.drops = drops; v.parts = parts; v.stars = stars; v.emo = emo; }
+  var CH = 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEF<>/{}[]=+*#$%'.split('');
+  var colW = 18, drops = [], parts = [], stars = [];
+
+  /* ---------- style model ---------- */
+  var TEMPLATES = [
+    { id: 'hacker', name: 'Hacker Terminal', bg1: '#030706', bg2: '#06140f', text: '#e9fff5', accent: '#19ff8c', font: 'Chakra Petch', bgStyle: 'rain', anim: 'zoom', fx: 'glitch', emojis: '💻⚡🔓', emojiOn: false, eMode: 'float', scan: true },
+    { id: 'neon', name: 'Neon Club', bg1: '#12002b', bg2: '#4a0080', text: '#ffffff', accent: '#ff2bd6', font: 'Orbitron', bgStyle: 'particles', anim: 'bounce', fx: 'glow', emojis: '🎶✨💜', emojiOn: true, eMode: 'float', vis: 'circle', flash: true },
+    { id: 'sunset', name: 'Afro Sunset', bg1: '#2b0a00', bg2: '#ff7a1a', text: '#fff6e0', accent: '#ffd23f', font: 'Poppins', bgStyle: 'gradient', anim: 'fadeup', fx: 'shadow', emojis: '🌅🥁🌍', emojiOn: true, eMode: 'sway', vis: 'wave', grain: true },
+    { id: 'minimal', name: 'Clean Minimal', bg1: '#0e0e10', bg2: '#202028', text: '#ffffff', accent: '#9aa4ff', font: 'Montserrat', bgStyle: 'gradient', anim: 'fadeup', fx: 'none', emojis: '🎵', emojiOn: false, eMode: 'float', vis: 'off' },
+    { id: 'gospel', name: 'Gospel Light', bg1: '#0b1a3a', bg2: '#3b6bd8', text: '#fffbea', accent: '#ffe38a', font: 'Playfair Display', bgStyle: 'stars', anim: 'karaoke', fx: 'glow', emojis: '🙏✨🕊️', emojiOn: true, eMode: 'float', vis: 'wave' },
+    { id: 'retro', name: 'Retro Wave', bg1: '#1a0033', bg2: '#ff3d81', text: '#ffffff', accent: '#00e5ff', font: 'Permanent Marker', bgStyle: 'grid', anim: 'zoom', fx: 'outline', emojis: '🌴🕹️🎧', emojiOn: true, eMode: 'rain', scan: true },
+    { id: 'royal', name: 'Royal Gold', bg1: '#0a0a0a', bg2: '#2b2100', text: '#fff3c4', accent: '#ffc400', font: 'Bebas Neue', bgStyle: 'stars', anim: 'typewriter', fx: 'glow', emojis: '👑💎🔥', emojiOn: true, eMode: 'burst', cine: true, grain: true },
+    { id: 'love', name: 'Love Song', bg1: '#2a0716', bg2: '#c2185b', text: '#fff0f5', accent: '#ff80ab', font: 'Pacifico', bgStyle: 'particles', anim: 'blur', fx: 'glow', emojis: '❤️💕🌹', emojiOn: true, eMode: 'sway', vis: 'off' },
+    { id: 'ocean', name: 'Ocean Wave', bg1: '#001a33', bg2: '#006994', text: '#eaffff', accent: '#4dd0e1', font: 'Montserrat', bgStyle: 'waves', anim: 'slide', fx: 'shadow', emojis: '🌊🐚🎶', emojiOn: true, eMode: 'sway', vis: 'wave' },
+    { id: 'aurora', name: 'Aurora', bg1: '#02101a', bg2: '#0b3d3a', text: '#f0fff8', accent: '#7cffcb', font: 'Oswald', bgStyle: 'aurora', anim: 'blur', fx: 'glow', emojis: '✨🌌💫', emojiOn: true, eMode: 'float', vis: 'circle' },
+    { id: 'malawi', name: 'Warm Heart', bg1: '#050505', bg2: '#0b3d1a', text: '#ffffff', accent: '#e53935', font: 'Anton', bgStyle: 'rings', anim: 'zoom', fx: 'outline', emojis: '🇲🇼🌍❤️', emojiOn: true, eMode: 'burst', cine: true },
+    { id: 'fire', name: 'Fire', bg1: '#1a0000', bg2: '#b71c1c', text: '#fff4e0', accent: '#ffab00', font: 'Bangers', bgStyle: 'particles', anim: 'bounce', fx: 'outline', emojis: '🔥💥⚡', emojiOn: true, eMode: 'burst', flash: true },
+    { id: 'cyber', name: 'Cyber Grid', bg1: '#05001a', bg2: '#1a0040', text: '#e6fffb', accent: '#00ffd5', font: 'Russo One', bgStyle: 'grid', anim: 'flip', fx: 'glitch', emojis: '⚡🤖🛰️', emojiOn: false, eMode: 'float', vis: 'circle', scan: true },
+    { id: 'paper', name: 'Paper Light', bg1: '#f6f1e7', bg2: '#e4d9c2', text: '#2b2b2b', accent: '#c0392b', font: 'Playfair Display', bgStyle: 'gradient', anim: 'fadeup', fx: 'none', emojis: '🎵🌿', emojiOn: false, eMode: 'float', vis: 'off', grain: true }
+  ];
+  var FONTS = ['Chakra Petch', 'Orbitron', 'Bebas Neue', 'Anton', 'Oswald', 'Montserrat', 'Poppins', 'Righteous', 'Russo One', 'Playfair Display', 'Cinzel', 'Abril Fatface', 'Pacifico', 'Lobster', 'Dancing Script', 'Satisfy', 'Caveat', 'Permanent Marker', 'Bangers', 'Press Start 2P', 'Share Tech Mono'];
+  var SINGLE = ['Bebas Neue', 'Anton', 'Righteous', 'Russo One', 'Abril Fatface', 'Pacifico', 'Lobster', 'Satisfy', 'Permanent Marker', 'Bangers', 'Press Start 2P', 'Share Tech Mono'];
+  var ANIMS = [['fadeup', 'Fade up'], ['zoom', 'Zoom pop'], ['bounce', 'Bounce'], ['slide', 'Slide in'], ['flip', 'Flip'], ['blur', 'Blur in'], ['typewriter', 'Typewriter'], ['karaoke', 'Karaoke fill'], ['none', 'None']];
+  var FXS = [['glow', 'Glow'], ['glitch', 'Glitch'], ['outline', 'Outline'], ['shadow', 'Drop shadow'], ['none', 'None']];
+  var BGS = [['rain', 'Matrix rain'], ['gradient', 'Flowing gradient'], ['particles', 'Floating lights'], ['stars', 'Starfield'], ['aurora', 'Aurora'], ['waves', 'Ocean waves'], ['rings', 'Pulse rings'], ['grid', 'Retro grid']];
+  var VIS = [['bars', 'Bars'], ['circle', 'Circle'], ['wave', 'Wave line'], ['off', 'Off']];
+  var POS = [['mid', 'Middle'], ['top', 'Upper'], ['low', 'Lower']];
+  var EMODES = [['float', 'Float up'], ['sway', 'Float and sway'], ['rain', 'Fall down'], ['confetti', 'Confetti'], ['burst', 'Burst on each line']];
+  var KMODES = [['smooth', 'Smooth fill'], ['word', 'Word by word (auto)'], ['tapped', 'Word by word (tapped timing)']];
+  var PANELS = [['none', 'None'], ['glass', 'Glass box'], ['solid', 'Solid box'], ['underline', 'Underline']];
+  var ASHAPES = [['rounded', 'Rounded square'], ['square', 'Square'], ['circle', 'Circle'], ['vinyl', 'Vinyl record'], ['polaroid', 'Polaroid'], ['frame', 'Framed']];
+  var ALAYOUTS = [['off', 'Hidden'], ['intro', 'Intro and outro cards'], ['corner', 'Intro card and corner'], ['side', 'Large beside the lyrics']];
+  var NOSAVE = ['img', 'logo', 'art', 'slides'];
+  var SKEY = 'lvs.style.v3', PKEY = 'lvs.presets.v1';
+  var BASE = { vis: 'bars', pos: 'mid', upper: false, gradText: false, scan: false, grain: false, cine: false, flash: false, size: 100, eAmt: 4, dim: 45, panel: 'none', track: 0, head: true, bzoom: true };
+  var S = { tpl: 'hacker', kMode: 'smooth', img: null, logo: null, art: null, slides: [], artShape: 'rounded', artLayout: 'off', artSize: 100, artSpin: true, artBeat: true, slideSec: 6, outroOn: false, outro: 'Thanks for watching', credit: '', bitrate: '5', fps: '30' };
+  function weightFor(f) { return SINGLE.indexOf(f) > -1 ? '400' : '700'; }
+  function applyTemplate(id) {
+    var t = TEMPLATES.filter(function (x) { return x.id === id; })[0] || TEMPLATES[0];
+    Object.assign(S, BASE);
+    Object.keys(t).forEach(function (k) { if (k !== 'name') S[k] = t[k]; });
+    S.tpl = t.id;
+  }
+  applyTemplate('hacker');
+  try {
+    var saved = JSON.parse(localStorage.getItem(SKEY) || 'null');
+    if (saved) Object.keys(saved).forEach(function (k) { if (NOSAVE.indexOf(k) < 0) S[k] = saved[k]; });
+  } catch (e) {}
+  var emojiSet = [];
+
+  function parseHex(h) { h = String(h || '#000').replace('#', ''); if (h.length === 3) h = h.replace(/./g, '$&$&'); var n = parseInt(h, 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function rgba(h, a) { var c = parseHex(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+  function lum(h) {
+    var c = parseHex(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function hslHex(h, s, l) {
+    s /= 100; l /= 100;
+    var a = s * Math.min(l, 1 - l);
+    function f(n) { var k = (n + h / 30) % 12; var c = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1))); return Math.round(255 * c).toString(16).padStart(2, '0'); }
+    return '#' + f(0) + f(8) + f(4);
+  }
+  function graphemes(s) {
+    try { if (window.Intl && Intl.Segmenter) return Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s), function (x) { return x.segment; }).filter(function (x) { return x.trim(); }); } catch (e) {}
+    return Array.from(s).filter(function (x) { return x.trim(); });
+  }
+  function ensureFont() { try { document.fonts.load(weightFor(S.font) + ' 40px "' + S.font + '"'); } catch (e) {} }
+  function saveStyle() {
+    var c = {}; Object.keys(S).forEach(function (k) { if (NOSAVE.indexOf(k) < 0) c[k] = S[k]; });
+    try { localStorage.setItem(SKEY, JSON.stringify(c)); } catch (e) {}
+  }
+  function onStyle(keepTpl) {
+    if (!keepTpl) S.tpl = 'custom';
+    document.documentElement.style.setProperty('--accent', S.accent);
+    document.documentElement.style.setProperty('--on-accent', lum(S.accent) > 0.5 ? '#02130b' : '#ffffff');
+    emojiSet = graphemes(S.emojis || '');
+    ensureFont(); initAll(); syncControls(); saveStyle();
+  }
+
+  /* ---------- style controls ---------- */
+  function fillSelect(id, pairs) {
+    var s = $(id); pairs.forEach(function (p) { var o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; s.appendChild(o); });
+  }
+  FONTS.forEach(function (f) { var o = document.createElement('option'); o.value = f; o.textContent = f; o.style.fontFamily = '"' + f + '"'; $('sFont').appendChild(o); });
+  fillSelect('sAnim', ANIMS); fillSelect('sFx', FXS); fillSelect('sBg', BGS); fillSelect('sVis', VIS); fillSelect('sPos', POS); fillSelect('eMode', EMODES); fillSelect('sKMode', KMODES); fillSelect('sPanel', PANELS); fillSelect('aShape', ASHAPES); fillSelect('aLayout', ALAYOUTS);
+  TEMPLATES.forEach(function (t) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'tpl'; b.dataset.id = t.id;
+    b.style.background = 'linear-gradient(135deg,' + t.bg1 + ',' + t.bg2 + ')';
+    var dot = document.createElement('i'); dot.style.background = t.accent; dot.style.color = t.accent;
+    var sp = document.createElement('span'); sp.textContent = t.name;
+    b.appendChild(dot); b.appendChild(sp);
+    b.addEventListener('click', function () { applyTemplate(t.id); onStyle(true); });
+    $('tpls').appendChild(b);
+  });
+  function syncControls() {
+    Array.prototype.forEach.call($('tpls').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === S.tpl)); });
+    var sv = function (id, v) { if ($(id).value !== String(v)) $(id).value = v; };
+    sv('cBg1', S.bg1); sv('cBg2', S.bg2); sv('cText', S.text); sv('cAccent', S.accent);
+    sv('sFont', S.font); sv('sFx', S.fx); sv('sAnim', S.anim); sv('sBg', S.bgStyle); sv('sVis', S.vis); sv('sPos', S.pos); sv('sKMode', S.kMode); sv('sPanel', S.panel); sv('sTrack', S.track); $('trackVal').textContent = S.track; sv('aShape', S.artShape); sv('aLayout', S.artLayout); sv('aSize', S.artSize); $('aSizeVal').textContent = S.artSize + '%'; sv('slideSec', S.slideSec); $('slideVal').textContent = S.slideSec + 's';
+    sv('sSize', S.size); $('sizeVal').textContent = S.size + '%';
+    sv('imgDim', S.dim); $('dimVal').textContent = S.dim + '%';
+    sv('eSet', S.emojis); sv('eMode', S.eMode); sv('eAmt', S.eAmt); $('eAmtVal').textContent = S.eAmt;
+    sv('oText', S.outro); sv('oCredit', S.credit); sv('rBit', S.bitrate); sv('rFps', S.fps);
+    [['eOn', 'emojiOn'], ['kHead', 'head'], ['kBzoom', 'bzoom'], ['aSpin', 'artSpin'], ['aBeat', 'artBeat'], ['kGrad', 'gradText'], ['kUpper', 'upper'], ['kScan', 'scan'], ['kGrain', 'grain'], ['kCine', 'cine'], ['kFlash', 'flash'], ['oOn', 'outroOn']].forEach(function (p) { $(p[0]).checked = !!S[p[1]]; });
+  }
+  function bind(id, key, num, ev) {
+    $(id).addEventListener(ev || 'input', function () { S[key] = num ? +this.value : this.value; onStyle(); });
+  }
+  function bindChk(id, key) { $(id).addEventListener('change', function () { S[key] = this.checked; onStyle(); }); }
+  bind('cBg1', 'bg1'); bind('cBg2', 'bg2'); bind('cText', 'text'); bind('cAccent', 'accent');
+  bind('sFont', 'font', false, 'change'); bind('sFx', 'fx', false, 'change'); bind('sAnim', 'anim', false, 'change'); bind('sBg', 'bgStyle', false, 'change');
+  bind('sVis', 'vis', false, 'change'); bind('sPos', 'pos', false, 'change'); bind('sKMode', 'kMode', false, 'change'); bind('sPanel', 'panel', false, 'change'); bind('sTrack', 'track', true); bind('aShape', 'artShape', false, 'change'); bind('aLayout', 'artLayout', false, 'change'); bind('aSize', 'artSize', true); bind('slideSec', 'slideSec', true);
+  bind('sSize', 'size', true); bind('imgDim', 'dim', true); bind('eAmt', 'eAmt', true); bind('eSet', 'emojis'); bind('eMode', 'eMode', false, 'change');
+  bind('oText', 'outro'); bind('oCredit', 'credit'); bind('rBit', 'bitrate', false, 'change'); bind('rFps', 'fps', false, 'change');
+  bindChk('eOn', 'emojiOn'); bindChk('kHead', 'head'); bindChk('kBzoom', 'bzoom'); bindChk('aSpin', 'artSpin'); bindChk('aBeat', 'artBeat'); bindChk('kGrad', 'gradText'); bindChk('kUpper', 'upper'); bindChk('kScan', 'scan'); bindChk('kGrain', 'grain'); bindChk('kCine', 'cine'); bindChk('kFlash', 'flash'); bindChk('oOn', 'outroOn');
+  $('tplReset').addEventListener('click', function () { applyTemplate(S.tpl === 'custom' ? 'hacker' : S.tpl); onStyle(true); });
+  $('rand').addEventListener('click', function () {
+    var pick = function (a) { return a[(Math.random() * a.length) | 0]; };
+    var h = (Math.random() * 360) | 0;
+    S.bg1 = hslHex(h, 55, 7); S.bg2 = hslHex((h + 35) % 360, 65, 26); S.accent = hslHex((h + 170) % 360, 95, 62); S.text = '#ffffff';
+    S.font = pick(FONTS.filter(function (f) { return f !== 'Press Start 2P'; })); S.bgStyle = pick(BGS)[0]; S.anim = pick(ANIMS)[0]; S.fx = pick(FXS)[0]; S.vis = pick(VIS)[0];
+    onStyle();
+  });
+  function loadImg(inputId, key) {
+    $(inputId).addEventListener('change', function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      var im = new Image(); im.onload = function () { S[key] = im; }; im.src = URL.createObjectURL(f);
+    });
+  }
+  loadImg('imgFile', 'img'); loadImg('logoFile', 'logo');
+  $('imgClear').addEventListener('click', function () { S.img = null; $('imgFile').value = ''; });
+  $('logoClear').addEventListener('click', function () { S.logo = null; $('logoFile').value = ''; });
+
+  /* saved styles */
+  function getPresets() { try { return JSON.parse(localStorage.getItem(PKEY) || '{}') || {}; } catch (e) { return {}; } }
+  function setPresets(p) { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch (e) {} }
+  function renderPresets() {
+    var box = $('pList'); box.textContent = '';
+    var p = getPresets(), names = Object.keys(p);
+    if (!names.length) { var n = document.createElement('span'); n.className = 'note'; n.textContent = 'Nothing saved yet. Style a video, give it a name and save it.'; box.appendChild(n); return; }
+    names.forEach(function (name) {
+      var c = document.createElement('span'); c.className = 'chip';
+      var a = document.createElement('button'); a.type = 'button'; a.className = 'small'; a.textContent = name;
+      a.addEventListener('click', function () { var s = getPresets()[name]; if (s) { Object.assign(S, s); onStyle(true); } });
+      var d = document.createElement('button'); d.type = 'button'; d.className = 'small hot'; d.textContent = 'x'; d.setAttribute('aria-label', 'Delete style ' + name);
+      d.addEventListener('click', function () { var all = getPresets(); delete all[name]; setPresets(all); renderPresets(); });
+      c.appendChild(a); c.appendChild(d); box.appendChild(c);
+    });
+  }
+  $('pSave').addEventListener('click', function () {
+    var name = $('pName').value.trim() || 'My style';
+    var all = getPresets(), c = {}; Object.keys(S).forEach(function (k) { if (NOSAVE.indexOf(k) < 0) c[k] = S[k]; });
+    all[name] = c; setPresets(all); $('pName').value = ''; renderPresets();
+  });
+  renderPresets();
+
+  /* ---------- state ---------- */
+  var SAMPLE = [
+    ['Morning on the lake, the water turns to gold', 0.8],
+    ['Stories from the hills that my grandmother told', 4.6],
+    ['Dust on my shoes but I walk with pride', 8.4],
+    ['Dziko langa, Malawi, you are where I am from', 12.2]
+  ];
+  var lines = [];
+  var sel = 0;
+  var sampleMode = true;
+  var hasAudio = false, objUrl = null;
+  var demoDur = 17, vt = { playing: false, t0: 0, base: 0 };
+  var AC, analyser, srcNode, dest;
+  var fdata = null, pulse = 0;
+  var rec = null, chunks = [], recMime = '', recUrl = null, recTimer = null, recBlob = null, recName = '';
+  var audio = $('audio');
+
+  /* ---------- canvas sizing, particles, textures ---------- */
+  var noise = document.createElement('canvas'); noise.width = noise.height = 128;
+  (function () {
+    var c = noise.getContext('2d'), d = c.createImageData(128, 128);
+    for (var i = 0; i < d.data.length; i += 4) { var v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+    c.putImageData(d, 0, 0);
+  })();
+  var scanTile = document.createElement('canvas'); scanTile.width = 4; scanTile.height = 3;
+  (function () { var c = scanTile.getContext('2d'); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 0, 4, 1); })();
+
+  function initFx() {
+    rctx.fillStyle = S.bg1; rctx.fillRect(0, 0, W, H);
+    drops = [];
+    for (var i = 0; i < Math.ceil(W / colW); i++) drops.push(-Math.random() * 60);
+    parts = [];
+    for (i = 0; i < 50; i++) parts.push({ x: Math.random() * W, y: Math.random() * H, r: 3 + Math.random() * 12, vy: 0.2 + Math.random() * 0.7, a: 0.12 + Math.random() * 0.25, ph: Math.random() * 6 });
+    stars = [];
+    for (i = 0; i < 150; i++) stars.push({ x: Math.random() * W, y: Math.random() * H, r: 0.6 + Math.random() * 1.8, ph: Math.random() * 6 });
+    emo.length = 0;
+  }
+  function sizeView(v, w, h) { v.W = w; v.H = h; v.cv.width = w; v.cv.height = h; v.rain.width = w; v.rain.height = h; useView(v); initFx(); leaveView(v); }
+  function initAll() { [V1, V2].forEach(function (v) { useView(v); initFx(); leaveView(v); }); useView(V1); }
+  function setSize(w, h) {
+    sizeView(V1, w, h);
+    sizeView(V2, w > h ? 360 : (w < h ? 640 : 360), w > h ? 640 : (w < h ? 360 : 640));
+    $('altName').textContent = w < h ? 'landscape' : 'vertical';
+    useView(V1);
+  }
+  function stepRain() {
+    rctx.fillStyle = rgba(S.bg1, 0.14);
+    rctx.fillRect(0, 0, W, H);
+    rctx.font = '16px "Share Tech Mono", monospace';
+    for (var i = 0; i < drops.length; i++) {
+      var y = drops[i] * colW;
+      if (y > 0) {
+        rctx.fillStyle = Math.random() < 0.04 ? '#ffffff' : S.accent;
+        rctx.fillText(CH[(Math.random() * CH.length) | 0], i * colW, y);
+      }
+      if (y > H && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 0.5;
+    }
+  }
+
+  /* ---------- audio and clock ---------- */
+  function ensureAudio() {
+    if (AC) return;
+    var Ctor = window.AudioContext || window.webkitAudioContext;
+    AC = new Ctor();
+    srcNode = AC.createMediaElementSource(audio);
+    analyser = AC.createAnalyser(); analyser.fftSize = 256;
+    dest = AC.createMediaStreamDestination();
+    srcNode.connect(analyser); analyser.connect(AC.destination); analyser.connect(dest);
+    fdata = new Uint8Array(analyser.frequencyBinCount);
+  }
+  function now() { return hasAudio ? audio.currentTime : (vt.playing ? vt.base + (performance.now() - vt.t0) / 1000 : vt.base); }
+  function duration() { return hasAudio ? (audio.duration || 0) : demoDur; }
+  function isPlaying() { return hasAudio ? (!audio.paused && !audio.ended) : vt.playing; }
+  function play() {
+    if (hasAudio) { ensureAudio(); if (AC.state === 'suspended') AC.resume(); audio.play().catch(function () {}); }
+    else { if (vt.base >= demoDur) vt.base = 0; vt.t0 = performance.now(); vt.playing = true; }
+  }
+  function pause() { if (hasAudio) audio.pause(); else { vt.base = now(); vt.playing = false; } }
+  function seek(t) { t = Math.max(0, t); if (hasAudio) audio.currentTime = t; else { vt.base = t; vt.t0 = performance.now(); } }
+  function fmt(t) {
+    if (!isFinite(t)) t = 0;
+    var m = Math.floor(t / 60), s = t - m * 60;
+    return m + ':' + (s < 10 ? '0' : '') + s.toFixed(2);
+  }
+
+  /* ---------- lyrics ---------- */
+  var LRC = /^\s*\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/;
+  function parseLyrics() {
+    var old = lines.slice();
+    var out = [];
+    $('lyrics').value.split(/\r?\n/).forEach(function (raw) {
+      if (!raw.trim()) return;
+      var m = raw.match(LRC), text = raw.trim(), t = null, w = null;
+      if (m) { t = parseInt(m[1], 10) * 60 + parseFloat(m[2]); text = m[3].trim(); if (!text) return; }
+      else {
+        for (var i = 0; i < old.length; i++) { if (!old[i].used && old[i].text === text) { old[i].used = true; t = old[i].t; w = old[i].w || null; break; } }
+      }
+      out.push({ text: text, t: t, w: w });
+    });
+    lines = out;
+    if (sel >= lines.length) sel = Math.max(0, lines.length - 1);
+    var last = 0; lines.forEach(function (l) { if (l.t != null && l.t > last) last = l.t; });
+    if (!hasAudio) demoDur = last + 4.5;
+    renderRows();
+  }
+  function renderRows() {
+    var box = $('rows'); box.textContent = '';
+    lines.forEach(function (ln, i) {
+      var row = document.createElement('div');
+      row.className = 'row' + (i === sel ? ' sel' : '') + (ln.t == null ? ' un' : '');
+      row.setAttribute('role', 'listitem');
+      var n = document.createElement('span'); n.className = 'n'; n.textContent = String(i + 1).padStart(2, '0');
+      var ti = document.createElement('input'); ti.type = 'number'; ti.step = '0.1'; ti.min = '0';
+      ti.placeholder = '--'; ti.value = ln.t == null ? '' : ln.t.toFixed(2);
+      ti.setAttribute('aria-label', 'Start time for line ' + (i + 1));
+      ti.addEventListener('click', function (e) { e.stopPropagation(); });
+      ti.addEventListener('change', function () {
+        var v = parseFloat(ti.value); ln.t = isNaN(v) ? null : Math.max(0, v); updateLrc();
+        row.classList.toggle('un', ln.t == null);
+      });
+      var tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = ln.text + (ln.w && ln.w.length ? '  [words synced]' : '');
+      row.appendChild(n); row.appendChild(ti); row.appendChild(tx);
+      row.addEventListener('click', function () { sel = i; if (ln.t != null) seek(ln.t); renderRows(); });
+      box.appendChild(row);
+    });
+    var s = box.querySelector('.sel');
+    if (s) box.scrollTop = Math.max(0, s.offsetTop - box.clientHeight / 2 + s.offsetHeight / 2);
+    updateLrc();
+  }
+  function updateLrc() {
+    var out = [];
+    lines.forEach(function (l) {
+      if (l.t == null) return;
+      var m = Math.floor(l.t / 60), s = l.t - m * 60;
+      out.push('[' + String(m).padStart(2, '0') + ':' + (s < 10 ? '0' : '') + s.toFixed(2) + '] ' + l.text);
+    });
+    $('lrc').value = out.join('\n');
+  }
+  var wordMode = null;
+  function markWord() {
+    var ln = lines[wordMode.i], off = parseFloat($('react').value); if (isNaN(off)) off = 0;
+    ln.w.push(Math.max(ln.t, +(now() - off).toFixed(2)));
+    wordMode.idx++;
+    if (wordMode.idx >= wordMode.n) {
+      wordMode = null; pause(); renderRows();
+      $('wordNote').textContent = 'Word timing saved. Set Karaoke fill to "Word by word (tapped timing)" in Style, Text.';
+    } else $('wordNote').textContent = 'Word ' + (wordMode.idx + 1) + ' of ' + wordMode.n + ': tap as it starts.';
+  }
+  function mark() {
+    if (wordMode) { markWord(); return; }
+    if (!lines.length) return;
+    var off = parseFloat($('react').value); if (isNaN(off)) off = 0;
+    lines[sel].t = Math.max(0, +(now() - off).toFixed(2));
+    if (sel < lines.length - 1) sel++;
+    renderRows();
+  }
+  function undo() {
+    if (!lines.length) return;
+    if (sel > 0 && lines[sel].t == null) sel--;
+    lines[sel].t = null;
+    renderRows();
+  }
+  function shiftAll(d) {
+    lines.forEach(function (l) { if (l.t != null) l.t = Math.max(0, +(l.t + d).toFixed(2)); if (l.w) l.w = l.w.map(function (x) { return Math.max(0, +(x + d).toFixed(2)); }); });
+    renderRows();
+  }
+
+  /* ---------- drawing helpers ---------- */
+  var TX = 640, TW = 1075;
+  function setTrack(px) { if ('letterSpacing' in ctx) ctx.letterSpacing = px ? (S.track / 100 * px).toFixed(1) + 'px' : '0px'; }
+  function fontStr(px) { return weightFor(S.font) + ' ' + Math.round(px) + 'px "' + S.font + '", "Segoe UI", system-ui, sans-serif'; }
+  function T(s) { return S.upper ? String(s).toUpperCase() : String(s); }
+  function wrap(text, px) {
+    ctx.font = fontStr(px); setTrack(px);
+    var maxW = TW, words = T(text).split(/\s+/), out = [], cur = '';
+    words.forEach(function (w) {
+      var test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && cur) { out.push(cur); cur = w; } else cur = test;
+    });
+    if (cur) out.push(cur);
+    setTrack(0);
+    return out;
+  }
+  function drawBlock(ls, px, y0, color, dx, o) {
+    o = o || {};
+    ctx.font = fontStr(px); setTrack(px); ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    var lh = px * 1.22, n = o.limit, left = n != null, fill = color;
+    if (o.grad) { fill = ctx.createLinearGradient(TX - TW / 2, y0, TX + TW / 2, y0 + lh * ls.length); fill.addColorStop(0, S.text); fill.addColorStop(1, S.accent); }
+    for (var i = 0; i < ls.length; i++) {
+      var s = ls[i], x, y = y0 + lh * (i + 0.5);
+      if (left) {
+        if (n <= 0) break;
+        var w = ctx.measureText(s).width; ctx.textAlign = 'left'; x = TX - w / 2 + (dx || 0);
+        s = s.slice(0, n); n -= ls[i].length;
+      } else { ctx.textAlign = 'center'; x = TX + (dx || 0); }
+      if (o.stroke) { ctx.lineWidth = Math.max(3, px * 0.09); ctx.strokeStyle = o.stroke; ctx.strokeText(s, x, y); }
+      ctx.fillStyle = fill; ctx.fillText(s, x, y);
+    }
+    setTrack(0);
+  }
+  function activeIndex(t) {
+    var a = -1;
+    for (var i = 0; i < lines.length; i++) if (lines[i].t != null && lines[i].t <= t) a = i;
+    return a;
+  }
+  function clamp01(x) { return Math.min(1, Math.max(0, x)); }
+  function ease(x) { x = clamp01(x); return 1 - Math.pow(1 - x, 3); }
+  function easeBack(x) { x = clamp01(x); var c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+
+  /* ---------- backgrounds ---------- */
+  function cover(img, t) {
+    var s = Math.max(W / img.width, H / img.height) * (1.06 + 0.04 * Math.sin(t * 0.15) + (S.bzoom ? pulse * 0.05 : 0));
+    var w = img.width * s, h = img.height * s;
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+  }
+  function drawBg(t) {
+    var st = S.bgStyle, g, i;
+    if (hasBgImg()) { drawBgImg(t); ctx.fillStyle = 'rgba(0,0,0,' + (S.dim / 100) + ')'; ctx.fillRect(0, 0, W, H); }
+    else if (st === 'stars') { g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, S.bg1); g.addColorStop(1, S.bg2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+    else if (st === 'rain') { ctx.drawImage(rain, 0, 0); ctx.fillStyle = rgba(S.bg1, 0.62); ctx.fillRect(0, 0, W, H); }
+    else {
+      var a = t * 0.12, L = Math.hypot(W, H) / 2;
+      g = ctx.createLinearGradient(W / 2 - Math.cos(a) * L, H / 2 - Math.sin(a) * L, W / 2 + Math.cos(a) * L, H / 2 + Math.sin(a) * L);
+      g.addColorStop(0, S.bg1); g.addColorStop(1, S.bg2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    if (st === 'rain' && hasBgImg()) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5; ctx.drawImage(rain, 0, 0); ctx.restore(); }
+    if (st === 'gradient') {
+      for (i = 0; i < 3; i++) {
+        var bx = W * (0.5 + 0.35 * Math.sin(t * 0.2 + i * 2)), by = H * (0.5 + 0.35 * Math.cos(t * 0.17 + i * 1.7)), br = Math.max(W, H) * 0.35;
+        var rg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+        rg.addColorStop(0, rgba(S.accent, 0.26)); rg.addColorStop(1, rgba(S.accent, 0));
+        ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+      }
+    } else if (st === 'particles') {
+      for (i = 0; i < parts.length; i++) {
+        var p = parts[i]; p.y -= p.vy * (1 + pulse * 3); if (p.y < -p.r) { p.y = H + p.r; p.x = Math.random() * W; }
+        ctx.fillStyle = rgba(S.accent, p.a * (0.7 + 0.3 * Math.sin(t * 2 + p.ph)));
+        ctx.beginPath(); ctx.arc(p.x + Math.sin(t * 0.5 + p.ph) * 12, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+    } else if (st === 'stars') {
+      for (i = 0; i < stars.length; i++) {
+        var s = stars[i];
+        ctx.fillStyle = rgba(S.text, 0.25 + 0.75 * Math.abs(Math.sin(t * 1.4 + s.ph)) * (0.8 + pulse));
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.2832); ctx.fill();
+      }
+    } else if (st === 'aurora') {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      for (i = 0; i < 4; i++) {
+        for (var w = 0; w < 3; w++) {
+          ctx.lineWidth = H * (0.2 - w * 0.06); ctx.strokeStyle = rgba(i % 2 ? S.accent : S.text, 0.05 + w * 0.02 + pulse * 0.04);
+          ctx.beginPath();
+          for (var x = -20; x <= W + 20; x += 40) {
+            var yy = H * (0.28 + i * 0.12) + Math.sin(x * 0.004 + t * 0.4 + i * 1.3) * H * (0.07 + pulse * 0.05) + Math.sin(x * 0.011 - t * 0.3 + i) * H * 0.02;
+            if (x === -20) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+          }
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    } else if (st === 'waves') {
+      for (i = 0; i < 4; i++) {
+        ctx.fillStyle = rgba(S.accent, 0.1 + i * 0.04);
+        ctx.beginPath(); ctx.moveTo(0, H);
+        for (var x2 = 0; x2 <= W; x2 += 24) {
+          ctx.lineTo(x2, H * (0.72 + i * 0.07) + Math.sin(x2 * 0.006 + t * (0.7 + i * 0.25) + i * 2) * H * (0.03 + pulse * 0.04));
+        }
+        ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      }
+    } else if (st === 'rings') {
+      ctx.lineWidth = 3 + pulse * 10;
+      for (i = 0; i < 6; i++) {
+        var pr = ((t * 0.22 + i / 6) % 1);
+        ctx.strokeStyle = rgba(S.accent, (1 - pr) * 0.4);
+        ctx.beginPath(); ctx.arc(W / 2, H / 2, pr * Math.max(W, H) * 0.7, 0, 6.2832); ctx.stroke();
+      }
+    } else if (st === 'grid') {
+      var hz = H * 0.62;
+      ctx.strokeStyle = rgba(S.accent, 0.55); ctx.lineWidth = 2;
+      for (i = 0; i < 14; i++) {
+        var q = (i + ((t * 0.6) % 1)) / 14, gy = hz + (H - hz) * q * q;
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+      }
+      for (var j = -10; j <= 10; j++) { ctx.beginPath(); ctx.moveTo(W / 2 + j * W * 0.015, hz); ctx.lineTo(W / 2 + j * W * 0.16, H); ctx.stroke(); }
+      var sg = ctx.createLinearGradient(0, hz - H * 0.2, 0, hz);
+      sg.addColorStop(0, rgba(S.accent, 0.0)); sg.addColorStop(1, rgba(S.accent, 0.35));
+      ctx.fillStyle = sg; ctx.fillRect(0, hz - H * 0.2, W, H * 0.2);
+    }
+    var va = 0.6 * (1 - lum(S.bg1));
+    if (va > 0.02) {
+      var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,' + va + ')');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  /* ---------- visualizers ---------- */
+  function drawVis(t) {
+    var v = S.vis, i;
+    if (v === 'off') return;
+    if (v === 'bars') {
+      var bars = 56, bw = W / bars;
+      for (var b = 0; b < bars; b++) {
+        var val = fdata ? fdata[Math.min(fdata.length - 1, Math.floor(b * 0.9))] / 255 : (0.25 + 0.2 * Math.sin(t * 3 + b * 0.5));
+        var bh = Math.max(2, val * H * 0.13);
+        ctx.fillStyle = rgba(S.accent, 0.35);
+        ctx.fillRect(b * bw + 2, H - 12 - bh, bw - 4, bh);
+      }
+    } else if (v === 'circle') {
+      var cx = W / 2, cy = H * 0.47, R = Math.min(W, H) * 0.28, n = 72;
+      ctx.lineWidth = Math.max(3, Math.min(W, H) * 0.006); ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(S.accent, 0.55); ctx.beginPath();
+      for (i = 0; i < n; i++) {
+        var vv = fdata ? fdata[i % 36] / 255 : 0.3 + 0.25 * Math.sin(t * 3 + i * 0.4), a = i / n * 6.2832 + t * 0.1, r2 = R + 4 + vv * R * 0.55;
+        ctx.moveTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, R * 0.96, 0, 6.2832); ctx.strokeStyle = rgba(S.accent, 0.25); ctx.stroke();
+    } else if (v === 'wave') {
+      ctx.lineWidth = Math.max(3, Math.min(W, H) * 0.005); ctx.lineJoin = 'round';
+      ctx.strokeStyle = rgba(S.accent, 0.8); ctx.beginPath();
+      var m = 96;
+      for (i = 0; i <= m; i++) {
+        var x = i / m * W, vw = fdata ? fdata[Math.floor(i / m * 60)] / 255 : 0.5 + 0.4 * Math.sin(t * 2 + i * 0.2);
+        var y = H * 0.9 + Math.sin(i * 0.45 + t * 3) * vw * H * 0.07;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  /* ---------- emoji particles ---------- */
+  var emo = [], lastAi = -2, emoAcc = 0;
+  function spawnEmoji(mode, burst) {
+    if (!emojiSet.length || emo.length > 90) return;
+    var size = Math.min(W, H) * (0.05 + Math.random() * 0.06);
+    var e = { ch: emojiSet[(Math.random() * emojiSet.length) | 0], size: size, rot: (Math.random() - 0.5) * 0.6, vr: (Math.random() - 0.5) * 0.02, life: 0, max: 3.5 + Math.random() * 2, g: 0, ph: Math.random() * 6, sw: 0, col: null };
+    if (mode === 'confetti') {
+      var cols = [S.accent, S.text, '#ffd23f', '#ff5fa2', '#38e8ff'];
+      e.col = cols[(Math.random() * cols.length) | 0]; e.x = Math.random() * W; e.y = -size; e.vx = (Math.random() - 0.5) * 1.2; e.vy = 1.5 + Math.random() * 2.2; e.vr = (Math.random() - 0.5) * 0.25; e.sw = 1;
+    } else if (burst) { var ang = Math.random() * 6.2832, sp = 3 + Math.random() * 7; e.x = W / 2; e.y = H * 0.47; e.vx = Math.cos(ang) * sp; e.vy = Math.sin(ang) * sp - 2; e.max = 1.8 + Math.random() * 1.2; e.g = 0.18; }
+    else if (mode === 'rain') { e.x = Math.random() * W; e.y = -size; e.vx = (Math.random() - 0.5) * 0.5; e.vy = 1.5 + Math.random() * 2.5; }
+    else { e.x = Math.random() * W; e.y = H + size; e.vx = (Math.random() - 0.5) * 0.8; e.vy = -(1.2 + Math.random() * 2.4); if (mode === 'sway') e.sw = 1; }
+    emo.push(e);
+  }
+  function stepEmoji(dt, ai, playing) {
+    var isConf = S.eMode === 'confetti';
+    if (!S.emojiOn || (!emojiSet.length && !isConf)) { emo.length = 0; lastAi = ai; return; }
+    var k = dt * 60;
+    if (S.eMode === 'burst') {
+      if (ai !== lastAi && ai >= 0) for (var b = 0; b < 5 + S.eAmt * 2; b++) spawnEmoji('burst', true);
+      if (playing && pulse > 0.6 && Math.random() < 0.08) for (var c = 0; c < 2; c++) spawnEmoji('burst', true);
+    } else if (playing) {
+      emoAcc += dt * (S.eAmt * (isConf ? 3 : 0.7) + pulse * S.eAmt * 2.5);
+      while (emoAcc >= 1) { emoAcc -= 1; spawnEmoji(S.eMode, false); }
+    }
+    lastAi = ai;
+    for (var i = emo.length - 1; i >= 0; i--) {
+      var e = emo[i];
+      e.x += e.vx * k + (e.sw ? Math.sin(e.life * 2.2 + e.ph) * 0.9 * k : 0); e.y += e.vy * k; e.vy += e.g * k; e.rot += e.vr * k; e.life += dt;
+      if (e.life > e.max || e.y < -e.size * 2 || e.y > H + e.size * 2) emo.splice(i, 1);
+    }
+  }
+  function drawEmoji() {
+    if (!S.emojiOn) return;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (var i = 0; i < emo.length; i++) {
+      var e = emo[i];
+      ctx.save();
+      ctx.globalAlpha = clamp01(e.life / 0.3) * clamp01((e.max - e.life) / 0.7);
+      ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+      if (e.col) { ctx.fillStyle = e.col; ctx.fillRect(-e.size * 0.15, -e.size * 0.08, e.size * 0.3, e.size * 0.16); }
+      else { ctx.font = Math.round(e.size) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; ctx.fillText(e.ch, 0, 0); }
+      ctx.restore();
+    }
+  }
+
+  /* ---------- photos, slideshow, artwork ---------- */
+  function hasBgImg() { return !!(S.img || (S.slides && S.slides.length)); }
+  function drawBgImg(t) {
+    var list = (S.slides && S.slides.length) ? S.slides : [S.img];
+    if (list.length === 1) { cover(list[0], t); return; }
+    var d = Math.max(2, S.slideSec), k = Math.floor(t / d), f = t / d - k;
+    cover(list[k % list.length], t);
+    var fade = clamp01((f - 0.85) / 0.15);
+    if (fade > 0) { ctx.save(); ctx.globalAlpha = fade; cover(list[(k + 1) % list.length], t); ctx.restore(); }
+  }
+  function rr(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function drawCoverImg(img, x, y, w, h) {
+    var ir = img.width / img.height, dr = w / h, sx = 0, sy = 0, sw = img.width, sh = img.height;
+    if (ir > dr) { sw = img.height * dr; sx = (img.width - sw) / 2; } else { sh = img.width / dr; sy = (img.height - sh) / 2; }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+  function drawArt(cx, cy, size, t) {
+    var art = S.art, sh = S.artShape, r = size / 2;
+    if (!art) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    var sc = S.artBeat ? 1 + pulse * 0.08 : 1; ctx.scale(sc, sc);
+    ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = size * 0.1; ctx.shadowOffsetY = size * 0.03;
+    if (sh === 'vinyl') {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fillStyle = '#0b0b0d'; ctx.fill();
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      for (var g = r * 0.42; g < r * 0.97; g += r * 0.045) { ctx.beginPath(); ctx.arc(0, 0, g, 0, 6.2832); ctx.stroke(); }
+      ctx.save(); ctx.rotate(S.artSpin ? t * 1.2 : 0); ctx.beginPath(); ctx.arc(0, 0, r * 0.36, 0, 6.2832); ctx.clip();
+      drawCoverImg(art, -r * 0.36, -r * 0.36, r * 0.72, r * 0.72); ctx.restore();
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.035, 0, 6.2832); ctx.fillStyle = '#000'; ctx.fill();
+      var sg = ctx.createLinearGradient(-r, -r, r, r);
+      sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.45, 'rgba(255,255,255,0.12)'); sg.addColorStop(0.55, 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fillStyle = sg; ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.strokeStyle = rgba(S.accent, 0.55); ctx.lineWidth = 2; ctx.stroke();
+    } else if (sh === 'circle') {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fillStyle = '#000'; ctx.fill(); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.clip(); ctx.rotate(S.artSpin ? t * 0.5 : 0); drawCoverImg(art, -r * 1.42, -r * 1.42, r * 2.84, r * 2.84); ctx.restore();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.strokeStyle = rgba(S.accent, 0.8); ctx.lineWidth = Math.max(3, size * 0.02); ctx.stroke();
+    } else if (sh === 'polaroid') {
+      var pw = size, ph = size * 1.2;
+      ctx.rotate(-0.07);
+      ctx.fillStyle = '#f7f4ec'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      drawCoverImg(art, -pw / 2 + pw * 0.06, -ph / 2 + pw * 0.06, pw * 0.88, pw * 0.88);
+      ctx.fillStyle = '#2e2e2e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 ' + Math.round(size * 0.1) + 'px "Caveat","Permanent Marker",cursive';
+      ctx.fillText(($('title').value || '').slice(0, 24), 0, ph / 2 - (ph - pw * 0.94) / 2);
+    } else if (sh === 'frame') {
+      var fw = size * 0.07;
+      ctx.fillStyle = S.accent; ctx.fillRect(-r, -r, size, size);
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.fillStyle = '#0b0b0d'; ctx.fillRect(-r + fw, -r + fw, size - fw * 2, size - fw * 2);
+      drawCoverImg(art, -r + fw * 1.7, -r + fw * 1.7, size - fw * 3.4, size - fw * 3.4);
+    } else {
+      var rad = sh === 'rounded' ? size * 0.12 : 0;
+      rr(-r, -r, size, size, rad); ctx.fillStyle = '#000'; ctx.fill(); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.save(); rr(-r, -r, size, size, rad); ctx.clip(); drawCoverImg(art, -r, -r, size, size); ctx.restore();
+      rr(-r, -r, size, size, rad); ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* ---------- main draw ---------- */
+  function wordSpans(aL) {
+    var out = [], off = 0;
+    aL.forEach(function (l) { var o = off; l.split(' ').forEach(function (w) { out.push([o, o + w.length]); o += w.length + 1; }); off += l.length; });
+    return out;
+  }
+  function karaokeCount(aL, ln, t, nextT) {
+    var total = aL.join('').length, age = t - ln.t, span = Math.max(0.5, (nextT - ln.t) * 0.9), sp = wordSpans(aL), mode = S.kMode, i;
+    if (mode === 'tapped' && ln.w && ln.w.length === sp.length) {
+      var k = -1; for (i = 0; i < ln.w.length; i++) if (ln.w[i] <= t) k = i;
+      if (k < 0) return 0;
+      var endT = k + 1 < ln.w.length ? ln.w[k + 1] : Math.min(nextT, ln.w[k] + 1.0);
+      var pw = clamp01((t - ln.w[k]) / Math.max(0.12, endT - ln.w[k]));
+      return Math.round(sp[k][0] + (sp[k][1] - sp[k][0]) * pw);
+    }
+    if (mode === 'word' || mode === 'tapped') {
+      var wsum = 0, ws = sp.map(function (q) { var l = q[1] - q[0] + 1; wsum += l; return l; }), f = clamp01(age / span) * wsum, acc = 0;
+      for (i = 0; i < sp.length; i++) {
+        if (f < acc + ws[i]) { var within = clamp01((f - acc) / ws[i] * 2); return Math.round(sp[i][0] + (sp[i][1] - sp[i][0]) * within); }
+        acc += ws[i];
+      }
+      return total;
+    }
+    return Math.floor(total * clamp01(age / span));
+  }
+  function lastLineTime() { var m = 0; lines.forEach(function (l) { if (l.t != null && l.t > m) m = l.t; }); return m; }
+  function draw(t, dt) {
+    var portrait = H > W;
+    var base = (portrait ? W * 0.085 : H * 0.09) * (S.size / 100);
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.filter = 'none';
+    drawBg(t);
+    drawVis(t);
+
+    var ai = activeIndex(t), dur = duration();
+    stepEmoji(dt, ai, isPlaying());
+    drawEmoji();
+
+    // header
+    if (S.head) {
+    var hs = Math.max(14, Math.min(W, H) * 0.03);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.font = '400 ' + Math.round(hs) + 'px "Share Tech Mono", monospace';
+    ctx.fillStyle = S.accent;
+    var blink = (Math.floor(performance.now() / 500) % 2) ? '_' : ' ';
+    ctx.fillText('> ' + ($('title').value || '') + blink, W * 0.04, H * 0.045 + (S.cine ? H * 0.08 : 0));
+    ctx.fillStyle = rgba(S.text, 0.65);
+    ctx.fillText('  ' + ($('artist').value || ''), W * 0.04, H * 0.045 + hs * 1.4 + (S.cine ? H * 0.08 : 0));
+    }
+
+    var glow = (S.fx === 'glow' || S.fx === 'glitch');
+    var cy = H * (S.pos === 'top' ? 0.3 : (S.pos === 'low' ? 0.66 : 0.47));
+    var outroStart = (S.outroOn && dur > 0) ? Math.max(lastLineTime() + 2, dur - 4.5) : Infinity;
+    var inOutro = t >= outroStart && dur > 0;
+    var artOn = !!(S.art && S.artLayout !== 'off');
+    var lyricMode = !inOutro && lines.length > 0 && ai >= 0;
+    TX = W / 2; TW = W * 0.84;
+    if (artOn) {
+      var asz = Math.min(W, H) * S.artSize / 100;
+      if (!lyricMode) drawArt(W / 2, H * 0.26, asz * 0.3, t);
+      else if (S.artLayout === 'corner') { var cs = asz * 0.17; drawArt(W - W * 0.035 - cs / 2, H * 0.05 + cs / 2 + (S.cine ? H * 0.08 : 0), cs, t); }
+      else if (S.artLayout === 'side') {
+        if (W > H * 1.05) { var ss = Math.min(H * 0.6, W * 0.34) * S.artSize / 100; drawArt(W * 0.2, H * 0.5, ss, t); TX = W * 0.64; TW = W * 0.52; }
+        else { var ps = Math.min(W * 0.5, H * 0.28) * S.artSize / 100; drawArt(W / 2, H * 0.22, ps, t); cy = H * 0.66; }
+      }
+    }
+
+    if (inOutro) {
+      var oa = ease((t - outroStart) / 0.8);
+      ctx.fillStyle = rgba(S.bg1, 0.62 * oa); ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = oa;
+      var op = base * 1.1, ol = wrap(S.outro || 'Thanks for watching', op), oh = ol.length * op * 1.22, oy = H * (artOn ? 0.64 : 0.46) - oh / 2;
+      if (glow) { ctx.shadowColor = S.accent; ctx.shadowBlur = 26; }
+      drawBlock(ol, op, oy, S.text, 0, { stroke: S.fx === 'outline' ? S.accent : null, grad: S.gradText });
+      ctx.shadowBlur = 0;
+      drawBlock([($('title').value || '') + (($('artist').value) ? ' - ' + $('artist').value : '')], base * 0.45, oy + oh + base * 0.15, S.accent, 0);
+      ctx.globalAlpha = 1;
+    } else if (!lines.length || ai < 0) {
+      var ia = ease(t / 0.9);
+      ctx.globalAlpha = ia;
+      var tp = base * 1.15;
+      var tl = wrap($('title').value || 'Untitled', tp);
+      var hT = tl.length * tp * 1.22, y0 = H * (artOn ? 0.62 : 0.46) - hT / 2;
+      if (glow) { ctx.shadowColor = S.accent; ctx.shadowBlur = 24; }
+      drawBlock(tl, tp, y0, S.accent, 0, { stroke: S.fx === 'outline' ? S.text : null });
+      ctx.shadowBlur = 0;
+      drawBlock([($('artist').value || '')], base * 0.5, y0 + hT + base * 0.2, S.text, 0);
+      if (S.credit) drawBlock([S.credit], base * 0.34, y0 + hT + base * 0.2 + base * 0.75, rgba(S.text, 0.7), 0);
+      ctx.globalAlpha = 1;
+    } else {
+      var fsA = base, fsN = base * 0.58;
+      var aL = wrap(lines[ai].text, fsA);
+      var hA = aL.length * fsA * 1.22;
+      var topA = cy - hA / 2, botA = cy + hA / 2, gap = fsN * 0.7, y, k, L, px, h;
+      y = botA + gap * 1.2;
+      for (k = 1; k <= 2; k++) {
+        if (ai + k >= lines.length) break;
+        px = k === 1 ? fsN : fsN * 0.8; L = wrap(lines[ai + k].text, px); h = L.length * px * 1.22;
+        ctx.globalAlpha = k === 1 ? 0.5 : 0.22; drawBlock(L, px, y, S.text); y += h + gap;
+      }
+      y = topA - gap * 1.2;
+      for (k = 1; k <= 2; k++) {
+        if (ai - k < 0) break;
+        px = k === 1 ? fsN : fsN * 0.8; L = wrap(lines[ai - k].text, px); h = L.length * px * 1.22; y -= h;
+        ctx.globalAlpha = k === 1 ? 0.4 : 0.18; drawBlock(L, px, y, S.text); y -= gap;
+      }
+      ctx.globalAlpha = 1;
+
+      var age = t - lines[ai].t, A = S.anim, sc = 1, scY = 1, ty = 0, tx = 0, al = 1, limit = null, kn = null, blurPx = 0, e1;
+      if (A === 'fadeup') { e1 = ease(age / 0.45); al = e1; ty = (1 - e1) * fsA * 0.45; }
+      else if (A === 'zoom') { sc = 0.5 + 0.5 * easeBack(age / 0.4); al = clamp01(age / 0.15); }
+      else if (A === 'bounce') { sc = 0.3 + 0.7 * easeBack(age / 0.55); ty = -(1 - clamp01(age / 0.4)) * fsA * 0.3 * Math.abs(Math.sin(age * 14)); al = clamp01(age / 0.12); }
+      else if (A === 'slide') { e1 = ease(age / 0.45); al = e1; tx = -(1 - e1) * W * 0.14; }
+      else if (A === 'flip') { scY = Math.max(0.03, easeBack(age / 0.5)); al = clamp01(age / 0.1); }
+      else if (A === 'blur') { e1 = ease(age / 0.6); al = e1; blurPx = (1 - e1) * 14; }
+      else if (A === 'typewriter') { var total = aL.join('').length, du = Math.min(1.4, 0.05 * total + 0.15); limit = Math.floor(total * clamp01(age / du)); }
+      else if (A === 'karaoke') {
+        var nx = (lines[ai + 1] && lines[ai + 1].t != null) ? lines[ai + 1].t : (dur > lines[ai].t ? dur : lines[ai].t + 3);
+        kn = karaokeCount(aL, lines[ai], t, nx); al = clamp01(age / 0.15);
+      }
+      sc *= 1 + pulse * 0.05;
+
+      ctx.save();
+      ctx.translate(TX + tx, cy + ty);
+      if (S.fx === 'glitch') ctx.transform(1, 0, -0.04 * Math.sin(t * 0.7), 1, 0, 0);
+      ctx.scale(sc, sc * scY); ctx.translate(-TX, -cy);
+      ctx.globalAlpha = al;
+      if (blurPx > 0.5 && 'filter' in ctx) ctx.filter = 'blur(' + blurPx.toFixed(1) + 'px)';
+      var stroke = S.fx === 'outline' ? S.accent : null;
+      if (S.panel !== 'none') {
+        ctx.font = fontStr(fsA); setTrack(fsA);
+        var mw = 0; aL.forEach(function (l) { mw = Math.max(mw, ctx.measureText(l).width); }); setTrack(0);
+        var pd = fsA * 0.4;
+        if (S.panel === 'underline') { ctx.fillStyle = S.accent; ctx.fillRect(TX - mw / 2, botA + fsA * 0.12, mw, Math.max(4, fsA * 0.07)); }
+        else {
+          rr(TX - mw / 2 - pd, topA - pd * 0.55, mw + pd * 2, hA + pd * 1.1, fsA * 0.28);
+          ctx.fillStyle = rgba(S.bg1, S.panel === 'solid' ? 0.92 : 0.58); ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = rgba(S.accent, 0.55); ctx.stroke();
+        }
+      }
+      if (S.fx === 'glitch' && (Math.random() < 0.025 || pulse > 0.62)) {
+        ctx.globalCompositeOperation = 'lighter';
+        drawBlock(aL, fsA, topA, 'rgba(255,59,107,0.75)', -5, { limit: limit });
+        drawBlock(aL, fsA, topA, 'rgba(56,232,255,0.75)', 5, { limit: limit });
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      if (glow) { ctx.shadowColor = S.accent; ctx.shadowBlur = 22 + pulse * 50; }
+      else if (S.fx === 'shadow') { ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = Math.max(3, fsA * 0.06); }
+      if (A === 'karaoke') {
+        ctx.globalAlpha = al * 0.55; drawBlock(aL, fsA, topA, S.text, 0, { stroke: stroke });
+        ctx.globalAlpha = al; drawBlock(aL, fsA, topA, S.accent, 0, { limit: kn });
+      } else drawBlock(aL, fsA, topA, S.text, 0, { limit: limit, stroke: stroke, grad: S.gradText });
+      ctx.restore();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    }
+
+    // progress
+    if (dur > 0) { ctx.fillStyle = S.accent; ctx.fillRect(0, H - 5, W * Math.min(1, t / dur), 5); }
+
+    // film effects
+    if (S.scan) { ctx.fillStyle = ctx.createPattern(scanTile, 'repeat'); ctx.fillRect(0, 0, W, H); }
+    if (S.grain) {
+      ctx.save(); ctx.globalAlpha = 0.07;
+      var ox = -((Math.random() * 128) | 0), oy2 = -((Math.random() * 128) | 0);
+      for (var gy = oy2; gy < H; gy += 128) for (var gx = ox; gx < W; gx += 128) ctx.drawImage(noise, gx, gy);
+      ctx.restore();
+    }
+    if (S.flash && pulse > 0.5) { ctx.fillStyle = rgba(S.accent, Math.min(0.3, (pulse - 0.5) * 0.7)); ctx.fillRect(0, 0, W, H); }
+    if (S.cine) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H * 0.08); ctx.fillRect(0, H * 0.92, W, H * 0.08); }
+
+    // logo
+    if (S.logo) {
+      var lh2 = H * 0.09, lw2 = S.logo.width * (lh2 / S.logo.height);
+      ctx.globalAlpha = 0.95; ctx.drawImage(S.logo, W * 0.03, H - lh2 - H * 0.05 - (S.cine ? 0 : 6), lw2, lh2); ctx.globalAlpha = 1;
+    }
+
+    // watermark (always on)
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    var ws = Math.max(13, Math.min(W, H) * 0.028);
+    ctx.font = '400 ' + Math.round(ws) + 'px "Share Tech Mono", monospace';
+    var wcol = S.cine ? '#ffffff' : S.text;
+    ctx.fillStyle = rgba(wcol, 0.92);
+    ctx.shadowColor = lum(wcol) > 0.5 ? '#000' : '#fff'; ctx.shadowBlur = 6;
+    ctx.fillText('</> designed by MACRAME', W - W * 0.025, H - H * 0.035 - 6);
+    ctx.shadowBlur = 0;
+  }
+
+  /* ---------- main loop ---------- */
+  var seeking = false, lastFrame = performance.now();
+  function frame() {
+    requestAnimationFrame(frame);
+    var nowMs = performance.now(), dt = Math.min(0.05, (nowMs - lastFrame) / 1000); lastFrame = nowMs;
+    var t = now();
+    if (analyser && fdata) {
+      analyser.getByteFrequencyData(fdata);
+      var s = 0; for (var i = 0; i < 8; i++) s += fdata[i];
+      pulse = pulse * 0.8 + (s / 8 / 255) * 0.2;
+    } else pulse *= 0.9;
+    useView(V1); if (S.bgStyle === 'rain') stepRain(); draw(t, dt); leaveView(V1);
+    if (splitOn && !rec) { useView(V2); if (S.bgStyle === 'rain') stepRain(); draw(t, dt); leaveView(V2); useView(V1); }
+    var dur = duration();
+    $('time').textContent = fmt(t) + ' / ' + fmt(dur);
+    if (!seeking && dur > 0) $('seek').value = String(Math.round(Math.min(1, t / dur) * 1000));
+    $('play').textContent = isPlaying() ? 'Pause' : 'Play';
+    if (!hasAudio && vt.playing && t >= demoDur) { vt.playing = false; vt.base = demoDur; if (rec) stopRec(); }
+  }
+
+  /* ---------- saving files ---------- */
+  async function saveBlob(blob, name, note) {
+    var dl = null;
+    try { dl = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); note('Saved.'); }
+      catch (e) { note((e && e.code === 'declined') ? 'Save cancelled.' : 'Could not save (' + ((e && e.code) || 'error') + ').'); }
+      return;
+    }
+    var shared = false;
+    try {
+      var file = new File([blob], name, { type: blob.type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); shared = true; note('Shared.'); }
+    } catch (e) { if (e && e.name === 'AbortError') { note('Share cancelled.'); return; } }
+    if (shared) return;
+    if (/; wv\)/.test(navigator.userAgent) || /Acode/i.test(navigator.userAgent)) {
+      note('This in-app browser cannot save files. Open this page in Chrome and try again.');
+      return;
+    }
+    var u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 60000);
+    note('Download started. If nothing happened, long-press or right-click the preview and choose Save.');
+  }
+
+  /* ---------- recording ---------- */
+  function pickMime() {
+    var c = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+    for (var i = 0; i < c.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported(c[i])) return c[i];
+    return '';
+  }
+  function setStatus(msg, isRec) { var el = $('status'); el.textContent = msg; el.className = 'status' + (isRec ? ' rec' : ''); }
+  function startRec() {
+    if (!window.MediaRecorder || !mainCv.captureStream) { setStatus('This browser cannot record video from a page. Try Chrome or Edge.'); return; }
+    var stream = mainCv.captureStream(+S.fps || 30);
+    if (hasAudio) { ensureAudio(); if (AC.state === 'suspended') AC.resume(); dest.stream.getAudioTracks().forEach(function (tr) { stream.addTrack(tr); }); }
+    recMime = pickMime();
+    var bps = Math.round((parseFloat(S.bitrate) || 5) * 1000000);
+    try { rec = new MediaRecorder(stream, recMime ? { mimeType: recMime, videoBitsPerSecond: bps } : { videoBitsPerSecond: bps }); }
+    catch (e) { setStatus('Could not start recording: ' + e.message); rec = null; return; }
+    chunks = [];
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = function () {
+      var type = (recMime || 'video/webm').split(';')[0];
+      var blob = new Blob(chunks, { type: type });
+      if (recUrl) URL.revokeObjectURL(recUrl);
+      recUrl = URL.createObjectURL(blob);
+      $('out').src = recUrl;
+      recBlob = blob; recName = 'lyric-video-MACRAME.' + (type.indexOf('mp4') > -1 ? 'mp4' : 'webm');
+      $('outBox').hidden = false;
+      setStatus('Done. ' + (blob.size / 1048576).toFixed(1) + ' MB, ready below.');
+      $('rec').disabled = false; $('stoprec').disabled = true; rec = null;
+    };
+    pause(); seek(0);
+    rec.start(500);
+    $('rec').disabled = true; $('stoprec').disabled = false; $('outBox').hidden = true;
+    setStatus('Recording... plays the full song once. Keep this tab open.', true);
+    setTimeout(play, 150);
+  }
+  function stopRec() {
+    if (!rec) return;
+    if (recTimer) { clearTimeout(recTimer); recTimer = null; }
+    if (rec.state !== 'inactive') rec.stop();
+    pause();
+  }
+  audio.addEventListener('ended', function () { if (rec) { recTimer = setTimeout(stopRec, 600); } });
+
+  /* ---------- wiring ---------- */
+  $('lyrics').value = SAMPLE.map(function (s) { return s[0]; }).join('\n');
+  lines = SAMPLE.map(function (s) { return { text: s[0], t: s[1] }; });
+  demoDur = SAMPLE[SAMPLE.length - 1][1] + 4.5;
+  renderRows();
+  $('lyrics').addEventListener('input', function () { sampleMode = false; parseLyrics(); });
+
+  $('file').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    if (objUrl) URL.revokeObjectURL(objUrl);
+    pause(); objUrl = URL.createObjectURL(f);
+    audio.src = objUrl; hasAudio = true; vt.playing = false; vt.base = 0;
+    $('fileLabel').firstChild.nodeValue = f.name.length > 38 ? f.name.slice(0, 35) + '...' : f.name;
+    var stem = f.name.replace(/\.[^.]+$/, '').replace(/^[0-9a-f]{6,10}-/i, '').replace(/[_]+/g, ' ');
+    if ($('title').value === 'Your Song Title') $('title').value = stem;
+    if (sampleMode) { lines.forEach(function (l) { l.t = null; }); sel = 0; renderRows(); }
+    $('modeNote').textContent = 'Song loaded. Paste your lyrics, play, and tap at the start of each line.';
+    audio.load();
+  });
+  audio.addEventListener('loadedmetadata', function () { $('modeNote').textContent = 'Song loaded (' + fmt(audio.duration) + '). Paste your lyrics, play, and tap at the start of each line.'; });
+
+  $('play').addEventListener('click', function () { if (isPlaying()) pause(); else play(); });
+  $('restart').addEventListener('click', function () { seek(0); });
+  var sk = $('seek');
+  sk.addEventListener('input', function () { seeking = true; seek(duration() * (sk.value / 1000)); });
+  sk.addEventListener('change', function () { seeking = false; });
+  $('tap').addEventListener('pointerdown', function (e) { e.preventDefault(); mark(); });
+  $('tap').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); mark(); } });
+  $('undo').addEventListener('click', undo);
+  $('shiftM').addEventListener('click', function () { shiftAll(-0.1); });
+  $('shiftP').addEventListener('click', function () { shiftAll(0.1); });
+  $('spread').addEventListener('click', function () {
+    var d = duration(); if (!d || !lines.length) return;
+    var step = (d - 2) / lines.length;
+    lines.forEach(function (l, i) { l.t = +(1 + i * step).toFixed(2); l.w = null; });
+    renderRows();
+  });
+  $('clear').addEventListener('click', function () { lines.forEach(function (l) { l.t = null; l.w = null; }); sel = 0; renderRows(); });
+  $('shape').addEventListener('change', function () { var p = this.value.split('x'); setSize(+p[0], +p[1]); });
+  $('wordSync').addEventListener('click', function () {
+    if (wordMode) { wordMode = null; $('wordNote').textContent = 'Word sync cancelled.'; return; }
+    if (!lines.length) return;
+    var ln = lines[sel];
+    if (ln.t == null) { $('wordNote').textContent = 'Set this line start first: tap it during playback or type its time.'; return; }
+    var n = ln.text.split(/\s+/).length;
+    ln.w = []; wordMode = { i: sel, idx: 0, n: n };
+    $('wordNote').textContent = 'Word 1 of ' + n + ': tap as it starts. Press Word-sync again to cancel.';
+    seek(Math.max(0, ln.t - 0.3)); play();
+  });
+  function loadArt(f) {
+    if (!f || !/^image\//.test(f.type || 'image/')) return;
+    var im = new Image();
+    im.onload = function () { S.art = im; if (S.artLayout === 'off') S.artLayout = 'corner'; onStyle(true); };
+    im.src = URL.createObjectURL(f);
+  }
+  $('artFile').addEventListener('change', function () { if (this.files && this.files[0]) loadArt(this.files[0]); });
+  var drop = $('artDrop');
+  ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function (e) { var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadArt(f); });
+  $('artClear').addEventListener('click', function () { S.art = null; $('artFile').value = ''; });
+  $('slidesFile').addEventListener('change', function () {
+    var fl = Array.prototype.slice.call(this.files || [], 0, 20), out = [], left = fl.length;
+    if (!left) return;
+    var done = function () { if (--left === 0) S.slides = out.filter(Boolean); };
+    fl.forEach(function (f, i) { var im = new Image(); im.onload = function () { out[i] = im; done(); }; im.onerror = done; im.src = URL.createObjectURL(f); });
+  });
+  $('slidesClear').addEventListener('click', function () { S.slides = []; $('slidesFile').value = ''; });
+  $('kSplit').addEventListener('change', function () { splitOn = this.checked; $('miniBox').hidden = !splitOn; });
+  $('rec').addEventListener('click', startRec);
+  $('stoprec').addEventListener('click', stopRec);
+  $('dl').addEventListener('click', function () {
+    if (!recBlob) { $('dlnote').textContent = 'Record a video first.'; return; }
+    saveBlob(recBlob, recName, function (m) { $('dlnote').textContent = m; });
+  });
+  $('thumb').addEventListener('click', function () {
+    mainCv.toBlob(function (b) {
+      if (!b) { setStatus('Could not make the thumbnail.'); return; }
+      saveBlob(b, 'lyric-thumbnail-MACRAME.png', setStatus);
+    }, 'image/png');
+  });
+  $('copylrc').addEventListener('click', function () {
+    var ta = $('lrc'); ta.select();
+    var done = function () { setStatus('Copied timed lyrics.'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, function () { try { document.execCommand('copy'); done(); } catch (e) {} });
+    else { try { document.execCommand('copy'); done(); } catch (e) {} }
+  });
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button'); if (b && !b.classList.contains('tpl')) b.blur(); });
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toUpperCase();
+    if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT' || tag === 'SUMMARY') return;
+    if (e.code === 'Space' || e.key === 'm' || e.key === 'M') { e.preventDefault(); mark(); }
+  });
+
+  /* ---------- auto-write lyrics (Claude, when hosted) ---------- */
+  function cleanLyrics(txt) {
+    return String(txt || '').replace(/```[a-z]*/gi, '').split(/\r?\n/).map(function (l) { return l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim(); })
+      .filter(function (l) { return l && !/^[\[(].*[\])]$/.test(l) && !/^(verse|chorus|hook|bridge|intro|outro)\b.*:?$/i.test(l); }).join('\n');
+  }
+  if (window.claude && window.claude.use) {
+    window.claude.use('sample').then(function (sample) {
+      if (!sample) return;
+      $('gOff').hidden = true; $('gen').hidden = false;
+      var ctl = null, note = $('gNote');
+      function finish(msg) { $('gGo').disabled = false; $('gStop').hidden = true; ctl = null; note.textContent = msg; }
+      $('gGo').addEventListener('click', function () {
+        var lang = $('gLang').value, style = $('gStyle').value, n = $('gLines').value;
+        var theme = $('gTheme').value.trim() || 'Malawi';
+        var langRule = lang === 'Chichewa'
+          ? 'Write every line in natural, simple, everyday Chichewa as spoken in Malawi, with correct spelling. Think in Chichewa; never translate English word for word. Use real Chichewa expressions and imagery.'
+          : lang === 'English'
+            ? 'Write every line in clear, singable English.'
+            : 'Mix Chichewa and English naturally, the way Malawian artists do, switching language between lines or inside a line. The Chichewa must be natural and correctly spelled.';
+        var prompt = 'Write completely original song lyrics for a lyric video.\n'
+          + 'Style: ' + style + '. Theme: ' + theme + '.\n' + langRule + '\n'
+          + 'Exactly ' + n + ' lines. Each line is short (about 4 to 9 words), singable, and ends so that nearby lines rhyme or echo each other where it sounds natural.\n'
+          + 'Do not copy or imitate any existing song, and do not quote any real lyrics.\n'
+          + 'Output only the lines, one per line. No title, no section labels, no numbering, no blank lines, no notes.';
+        ctl = new AbortController();
+        $('gGo').disabled = true; $('gStop').hidden = false; note.textContent = 'Writing...';
+        sample(prompt, { signal: ctl.signal, cache: false, onText: function (r) { $('lyrics').value = cleanLyrics(r.text); } })
+          .then(function (r) {
+            $('lyrics').value = cleanLyrics(r.text); sampleMode = false; parseLyrics();
+            finish('Done. ' + lines.length + ' lines added.' + (lang !== 'English' ? ' Ask a Chichewa speaker to check the wording before you publish.' : ''));
+          })
+          .catch(function (e) {
+            if (e && e.code === 'not_granted') finish('Permission was not given, so nothing was written.');
+            else if (e && e.code === 'rate_limited') finish('Too many requests. Wait a little and try again.');
+            else if (ctl && ctl.signal.aborted) { $('lyrics').value = cleanLyrics($('lyrics').value); sampleMode = false; parseLyrics(); finish('Stopped. Kept what was written so far.'); }
+            else finish('Could not write lyrics right now. Try again.');
+          });
+      });
+      $('gStop').addEventListener('click', function () { if (ctl) ctl.abort(); });
+    }).catch(function () {});
+  }
+
+  setSize(1280, 720);
+  onStyle(true);
+  if (document.fonts && document.fonts.load) { document.fonts.load('400 16px "Share Tech Mono"'); }
+  requestAnimationFrame(frame);
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+</body></html>
